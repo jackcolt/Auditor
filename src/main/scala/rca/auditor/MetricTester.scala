@@ -75,20 +75,21 @@ class MetricTester extends FunSuite {
     //val head = analysisDF.take(20)
     //head.foreach(println)
 
-    analysisDF.createGlobalTempView("analysis")
 
     var metric = new LinkageMetric("CL Deed to DQ Deed Linkage")
 
     metric.characteristics = new LinkageCharacteristic("apn_lev_ratio_score") :: metric.characteristics
-    //metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score") :: metric.characteristics
-    //metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score") :: metric.characteristics
-    //metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score") :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score") :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score") :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score") :: metric.characteristics
 
-    analysisDF.cache()
+
+
 
     for (m <- metric.characteristics) {
 
-      val facts = analysisDF.filter("0<>"+m.name).agg(
+
+      val facts = analysisDF.limit(1000).agg(
         count(m.name),
         avg(m.name),
         min(m.name),
@@ -96,21 +97,19 @@ class MetricTester extends FunSuite {
         mean(m.name),
         stddev(m.name))
 
+
       for (r <- facts.take(1)) {
-        m.sample = r.getAs[Int](0)
-        m.avg = r.getAs[Float](1)
-        m.min = r.getAs[Float](2)
-        m.max = r.getAs[Float](3)
-        m.mean = r.getAs[Float](4)
-        m.stddev = r.getAs[Float](5)
+        m.sample = r.getAs[Long](0)
+        m.avg = r.getAs[Double](1)
+        m.min = r.getAs[Double](2)
+        m.max = r.getAs[Double](3)
+        m.mean = r.getAs[Double](4)
+        m.stddev = r.getAs[Double](5)
       }
     }
+    val rdd = spark.sparkContext.makeRDD(Seq(metric))
 
-    for (m <- metric.characteristics) {
-      println(m.name)
-      print("count:" + m.sample)
-      println ("avg: " + m.avg)
-    }
+    EsSpark.saveToEs(rdd, "linkage_metrics/docs")
   }
 
 }
