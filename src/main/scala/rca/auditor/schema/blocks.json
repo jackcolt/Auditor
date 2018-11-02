@@ -1,0 +1,55 @@
+{
+  "name": "Blocks",
+  "value": {
+    "fields": [
+      {
+        "id": "GroupId",
+        "dataType": "StringType",
+        "suffix": "id",
+        "primaryKey": true
+      },
+      {
+        "id": "EntityId",
+        "dataType": "StringType",
+        "suffix": "id",
+        "primaryKey": true
+      },
+      {
+        "id": "GroupType",
+        "dataType": "StringType",
+        "primaryKey": true
+      },
+      {
+        "id": "IdentityKey",
+        "dataType": "StringType"
+      },
+      {
+        "id": "Data",
+        "dataType": "StringType",
+        "suffix": "json"
+      },
+      {
+        "id": "Create",
+        "dataType": "TimestampType",
+        "internal": "batchDt"
+      },
+      {
+        "id": "Modified",
+        "dataType": "TimestampType",
+        "internal": "batchDt"
+      },
+      {
+        "id": "NumRecords",
+        "dataType": "IntegerType"
+      },
+      {
+        "id": "NumParcels",
+        "dataType": "IntegerType"
+      },
+      {
+        "id": "NumMergedParcels",
+        "dataType": "IntegerType"
+      }
+    ]
+  }
+}

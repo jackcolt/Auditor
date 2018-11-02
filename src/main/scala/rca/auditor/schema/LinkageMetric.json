@@ -1,0 +1,79 @@
+{
+  "name": "LinkageMetric",
+  "type": "record",
+  "value": {
+    "fields": [
+      {
+        "id": "name",
+        "dataType": "string"
+      },
+      {
+        "id": "source",
+        "type": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "String"
+          },
+          {
+            "name": "population",
+            "type": "integer"
+          },
+          {
+            "name": "eligible_population",
+            "type": "integer"
+          }
+        ]
+      },
+      {
+        "id": "target",
+        "type": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "String"
+          },
+          {
+            "name": "population",
+            "type": "integer"
+          },
+          {
+            "name": "eligible_population",
+            "type": "integer"
+          }
+        ]
+      },
+      {
+        "type": "struct",
+        "id": "characteristics",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string",
+            "nullable": false,
+            "metadata": {}
+          },
+          {
+            "name": "hits",
+            "type": "integer",
+            "nullable": false,
+            "metadata": {}
+          },
+          {
+            "name": "score",
+            "type": "float",
+            "nullable": false,
+            "metadata": {}
+          },
+          {
+            "name": "methodology",
+            "type": "string",
+            "nullable": false,
+            "metadata": {}
+          }
+        ]
+      }
+    ]
+  }
+}
+
