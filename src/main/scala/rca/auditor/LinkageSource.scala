@@ -2,11 +2,10 @@ package rca.auditor
 
 import scala.beans.BeanProperty
 
-class LinkageSource extends Serializable {
+class LinkageSource (var name:String) extends Serializable {
 
 
-  @BeanProperty var name: String = _
-  @BeanProperty var population: Int = _
-  @BeanProperty var eligiblePopulation: Int = _
+  @BeanProperty val population: Int = _
+  @BeanProperty val eligiblePopulation: Int = _
 
 }

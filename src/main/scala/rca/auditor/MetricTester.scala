@@ -13,19 +13,19 @@ class MetricTester extends FunSuite {
     val metric = new LinkageMetric("deed linkage test")
 
 
-    val linkageSource = new LinkageSource()
-    linkageSource.name = "CL deeds"
+    val linkageSource = new LinkageSource("CL Deeds")
+
     linkageSource.eligiblePopulation = 10
     linkageSource.population = 100
     metric.source = linkageSource
 
-    val linkageTarget = new LinkageSource()
-    linkageTarget.name = "DQ deeds"
+    val linkageTarget = new LinkageSource("DQ deeds")
+
     linkageTarget.eligiblePopulation = 10
     linkageTarget.population = 100
     metric.target = linkageTarget
 
-    val characteristic = new LinkageCharacteristic("APN")
+    val characteristic = new LinkageCharacteristic("APN",0)
 
 
     metric.characteristics = characteristic :: metric.characteristics
@@ -78,10 +78,12 @@ class MetricTester extends FunSuite {
 
     var metric = new LinkageMetric("CL Deed to DQ Deed Linkage")
 
-    metric.characteristics = new LinkageCharacteristic("apn_lev_ratio_score") :: metric.characteristics
-    metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score") :: metric.characteristics
-    metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score") :: metric.characteristics
-    metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score") :: metric.characteristics
+    println ("metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone)
+
+    metric.characteristics = new LinkageCharacteristic("apn_lev_ratio_score",0) :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score",0) :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score",0) :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score",0) :: metric.characteristics
 
 
 
@@ -89,7 +91,7 @@ class MetricTester extends FunSuite {
     for (m <- metric.characteristics) {
 
 
-      val facts = analysisDF.limit(1000).agg(
+      val facts = analysisDF.agg(
         count(m.name),
         avg(m.name),
         min(m.name),
@@ -106,6 +108,7 @@ class MetricTester extends FunSuite {
         m.mean = r.getAs[Double](4)
         m.stddev = r.getAs[Double](5)
       }
+      m.hits=analysisDF.filter(m.name+"="+m.hitScore).count()
     }
     val rdd = spark.sparkContext.makeRDD(Seq(metric))
 

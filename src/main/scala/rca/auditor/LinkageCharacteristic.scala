@@ -2,15 +2,14 @@ package rca.auditor
 
 import scala.beans.BeanProperty
 
-class LinkageCharacteristic (var _name: String) extends Serializable {
+class LinkageCharacteristic (var name: String, var hitScore: Double) extends Serializable {
 
-  @BeanProperty var name: String = _name
   @BeanProperty var sample: Long = _
   @BeanProperty var methodology: String = _
-  @BeanProperty var score: Double = _
   @BeanProperty var min: Double = _
   @BeanProperty var max: Double = _
   @BeanProperty var avg: Double = _
   @BeanProperty var stddev: Double = _
   @BeanProperty var mean: Double = _
+  @BeanProperty var hits: Long = _
 }

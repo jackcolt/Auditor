@@ -1,10 +1,10 @@
 package rca.auditor
 
+import org.joda.time.DateTime
+
 import scala.beans.BeanProperty
 
-class LinkageMetric (var _name:String) extends Serializable {
-
-  @BeanProperty var name: String = _name
+class LinkageMetric (var name:String) extends Serializable {
 
   @BeanProperty var characteristics: List[LinkageCharacteristic] = List()
 
@@ -12,4 +12,9 @@ class LinkageMetric (var _name:String) extends Serializable {
 
   @BeanProperty var target: LinkageSource = _
 
+  @BeanProperty val timeStamp: String = DateTime.now().toString("yyyy-MM-dd'T'HH:mm:ss")
+
+  @BeanProperty val timeZone: String = DateTime.now().toString("z")
+
+  @BeanProperty val dateTimeMillis: Long = DateTime.now.getMillis
 }
