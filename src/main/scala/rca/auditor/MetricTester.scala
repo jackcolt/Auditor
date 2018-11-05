@@ -80,10 +80,10 @@ class MetricTester extends FunSuite {
 
     println ("metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone)
 
-    metric.characteristics = new LinkageCharacteristic("apn_lev_ratio_score",0) :: metric.characteristics
-    metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score",0) :: metric.characteristics
-    metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score",0) :: metric.characteristics
-    metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score",0) :: metric.characteristics
+    //metric.characteristics = new LinkageCharacteristic("apn_lev_ratio_score",0) :: metric.characteristics
+    //metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score",0) :: metric.characteristics
+    //metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score",0) :: metric.characteristics
+    //metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score",0) :: metric.characteristics
 
 
 

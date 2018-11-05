@@ -4,7 +4,7 @@ import org.joda.time.DateTime
 
 import scala.beans.BeanProperty
 
-class LinkageMetric (var name:String) extends Serializable {
+class LinkageMetric (_name:String) extends Serializable {
 
   @BeanProperty var characteristics: List[LinkageCharacteristic] = List()
 
@@ -17,4 +17,6 @@ class LinkageMetric (var name:String) extends Serializable {
   @BeanProperty val timeZone: String = DateTime.now().toString("z")
 
   @BeanProperty val dateTimeMillis: Long = DateTime.now.getMillis
+
+  @BeanProperty val name=_name
 }
