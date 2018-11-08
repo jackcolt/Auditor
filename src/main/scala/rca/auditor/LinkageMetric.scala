@@ -19,4 +19,12 @@ class LinkageMetric (_name:String) extends Serializable {
   @BeanProperty val dateTimeMillis: Long = DateTime.now.getMillis
 
   @BeanProperty val name=_name
+
+  @BeanProperty var methodology: String = _
+
+  @BeanProperty var label: LinkageCharacteristic = _
+
+  @BeanProperty var performance: Performance = _
+
+
 }

@@ -1,8 +1,10 @@
 package rca.auditor
 
 import org.apache.kudu.spark.kudu._
+import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
 import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.mllib.regression.{LabeledPoint, LinearRegressionWithSGD}
+import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.elasticsearch.spark.rdd.EsSpark
@@ -116,10 +118,22 @@ class MetricTester extends FunSuite {
 
   test ("Regression Test") {
 
-    //val spark = SparkSession.builder().master("spark://172.31.30.117:7077").appName("Linkage Metrics").getOrCreate()
+    var metric = new LinkageMetric("CL Deed to DQ Deed Linkage")
+
+    println ("metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone)
+
+    val label = new LinkageCharacteristic("apn_lev_ratio_score",0)
+
+    metric.characteristics = label :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score",0) :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score",0) :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score",0) :: metric.characteristics
+
+    metric.label = label
+
+    metric.methodology = "LogisticRegressionWithLBFGS"
 
     val spark = SparkSession.builder().master("local").appName("Linkage Metrics").getOrCreate()
-    //val conf = new SparkConf().setAppName("Linkage_DQ_VS_CL").setMaster("spark://172.31.30.117:7077")
 
     spark.conf.set("spark.driver.allowMultipleContexts", "true")
 
@@ -139,34 +153,78 @@ class MetricTester extends FunSuite {
 
 
     val data = spark.sql(
-      "SELECT (1.0 - apn_lev_ratio_score) as label, addr_lev_ratio_score, buyer_lev_ratio_score from analysis " +
-    "limit 1000")
+      "SELECT floor(1.0 - apn_lev_ratio_score) as label, addr_lev_ratio_score, buyer_lev_ratio_score, seller_lev_ratio_score from analysis limit 50000")
 
 
 
-    val trainingData = data.rdd.map(row =>
+    val labeledData = data.rdd.map(row =>
       new LabeledPoint (
-        BigDecimal(row.getAs[Double](0)).setScale(0, BigDecimal.RoundingMode.FLOOR).toDouble,
-        Vectors.dense(row.getAs[Double](row.length-1))
+        row.getAs[Long](0),
+        //BigDecimal(row.getAs[Double](0)).setScale(0, BigDecimal.RoundingMode.FLOOR).toDouble,
+        Vectors.dense(row.getAs[Double](1), row.getAs[Double](2), row.getAs[Double](3))
       )).cache()
 
-    // Building the model
-    val numIterations = 100
-    val stepSize = 0.00000001
+    // Split data into training (60%) and test (40%)
+    val Array(training, test) = labeledData.randomSplit(Array(0.6, 0.4), seed = 11L)
+    training.cache()
 
+    // Run training algorithm to build the model
+    val model = new LogisticRegressionWithLBFGS()
+      .setNumClasses(2)
+      .run(training)
 
-    val model = LinearRegressionWithSGD.train(trainingData, numIterations, stepSize)
+    // Clear the prediction threshold so the model will return probabilities
+    //model.clearThreshold
 
+    // Compute raw scores on the test set
+    val predictionAndLabels = test.map { case LabeledPoint(label, features) =>
+      val prediction = model.predict(features)
+      (prediction, label)
+    }
+    // Instantiate metrics object
+    val metrics = new MulticlassMetrics(predictionAndLabels)
 
-    // Evaluate model on training examples and compute training error
-    val valuesAndPreds = trainingData.map { point =>
-      val prediction = model.predict(point.features)
-      (point.label, prediction)
+    // Confusion matrix
+    println("Confusion matrix:")
+    println(metrics.confusionMatrix)
+
+    // Overall Statistics
+    val accuracy = metrics.accuracy
+    println("Summary Statistics")
+    println(s"Accuracy = $accuracy")
+
+    // Precision by label
+    val labels = metrics.labels
+    labels.foreach { l =>
+      println(s"Precision($l) = " + metrics.precision(l))
     }
 
-    val MSE = valuesAndPreds.map{ case(v, p) => math.pow((v - p), 2) }.mean()
-    println(s"training Mean Squared Error $MSE")
+    // Recall by label
+    labels.foreach { l =>
+      println(s"Recall($l) = " + metrics.recall(l))
+    }
 
+    // False positive rate by label
+    labels.foreach { l =>
+      println(s"FPR($l) = " + metrics.falsePositiveRate(l))
+    }
+
+    // F-measure by label
+    labels.foreach { l =>
+      println(s"F1-Score($l) = " + metrics.fMeasure(l))
+    }
+
+    // Weighted stats
+    println(s"Weighted precision: ${metrics.weightedPrecision}")
+    println(s"Weighted recall: ${metrics.weightedRecall}")
+    println(s"Weighted F1 score: ${metrics.weightedFMeasure}")
+    println(s"Weighted false positive rate: ${metrics.weightedFalsePositiveRate}")
+
+    metric.performance = new Performance(metrics.accuracy, metrics.weightedPrecision,metrics.weightedRecall,metrics.weightedFMeasure,metrics.weightedFalsePositiveRate)
+
+    val rdd = spark.sparkContext.makeRDD(Seq(metric))
+
+    EsSpark.saveToEs(rdd, "linkage_metrics/docs")
   }
 }
 
