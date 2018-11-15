@@ -15,7 +15,7 @@ class MetricTester extends FunSuite {
 
   test("schema parser") {
 
-    val metric = new LinkageMetric("deed linkage test")
+    val metric = new LinkageMetric("deed linkage test", "1")
 
 
     val linkageSource = new LinkageSource("CL Deeds")
@@ -76,7 +76,7 @@ class MetricTester extends FunSuite {
     //head.foreach(println)
 
 
-    var metric = new LinkageMetric("CL Deed to DQ Deed Linkage")
+    var metric = new LinkageMetric("CL Deed to DQ Deed Linkage", "1")
 
     println ("metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone)
 
@@ -84,8 +84,6 @@ class MetricTester extends FunSuite {
     metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score",0) :: metric.characteristics
     metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score",0) :: metric.characteristics
     metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score",0) :: metric.characteristics
-
-
 
 
     for (m <- metric.characteristics) {
@@ -119,7 +117,7 @@ class MetricTester extends FunSuite {
 
   test ("Regression Test") {
 
-    var metric = new LinkageMetric("CL Deed to DQ Deed Linkage")
+    var metric = new LinkageMetric("CL Deed to DQ Deed Linkage", "1")
 
     println ("metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone)
 
@@ -154,15 +152,25 @@ class MetricTester extends FunSuite {
 
 
     val data = spark.sql(
-      "SELECT floor(1.0 - apn_lev_ratio_score) as label, addr_lev_ratio_score, buyer_lev_ratio_score, seller_lev_ratio_score from analysis limit 500000")
+      "SELECT floor(1.0 - apn_lev_ratio_score) as label, "+
+        "addr_lev_ratio_score, "+
+        "buyer_lev_ratio_score, "+
+        "seller_lev_ratio_score " +
+        "date_interval_match, " +
+        "date_exact_match " +
+        "from analysis limit 1000")
 
 
 
     val labeledData = data.rdd.map(row =>
       new LabeledPoint (
         row.getAs[Long](0),
-        //BigDecimal(row.getAs[Double](0)).setScale(0, BigDecimal.RoundingMode.FLOOR).toDouble,
-        Vectors.dense(row.getAs[Double](1), row.getAs[Double](2), row.getAs[Double](3))
+        Vectors.dense(
+          row.getAs[Double](1),
+          row.getAs[Double](2),
+          row.getAs[Double](3),
+          row.getAs[Int](4),
+          row.getAs[Int](5))
       )).cache()
 
 
@@ -231,7 +239,7 @@ class MetricTester extends FunSuite {
 
   test ("RandomForest") {
 
-    var metric = new LinkageMetric("CL Deed to DQ Deed Linkage")
+    var metric = new LinkageMetric("CL Deed to DQ Deed Linkage", "1")
 
     println ("metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone)
 
@@ -241,6 +249,8 @@ class MetricTester extends FunSuite {
     metric.characteristics = new LinkageCharacteristic("addr_lev_ratio_score",0) :: metric.characteristics
     metric.characteristics = new LinkageCharacteristic("buyer_lev_ratio_score",0) :: metric.characteristics
     metric.characteristics = new LinkageCharacteristic("seller_lev_ratio_score",0) :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("date_interval_match",1) :: metric.characteristics
+    metric.characteristics = new LinkageCharacteristic("date_exact_match",1) :: metric.characteristics
 
     metric.label = label
 
@@ -260,29 +270,37 @@ class MetricTester extends FunSuite {
     val kuduContext = new KuduContext(kuduMaster, sc)
 
 
-    val analysisDF = sqlContext.read.options(Map("kudu.master" -> "172.31.37.251:7051", "kudu.table" -> "impala::audit.dq_cl_analysis_test")).kudu
+    val analysisDF = sqlContext.read.options(Map("kudu.master" -> "172.31.37.251:7051", "kudu.table" -> "impala::audit.dq_cl_analysis_test_date")).kudu
 
     analysisDF.createOrReplaceTempView("analysis")
 
 
     val data = spark.sql(
-      "SELECT floor(1.0 - apn_lev_ratio_score) as label, addr_lev_ratio_score, buyer_lev_ratio_score, seller_lev_ratio_score from analysis limit 500000")
-
+      "SELECT floor(1.0 - apn_lev_ratio_score) as label, "+
+        "addr_lev_ratio_score, "+
+        "buyer_lev_ratio_score, "+
+        "seller_lev_ratio_score, " +
+        "cast (date_interval_match as DOUBLE), " +
+        "cast (date_exact_match as DOUBLE)" +
+        "from analysis limit 1000000")
 
     val labeledData = data.rdd.map(row =>
       new LabeledPoint (
         row.getAs[Long](0),
-        //BigDecimal(row.getAs[Double](0)).setScale(0, BigDecimal.RoundingMode.FLOOR).toDouble,
-        Vectors.dense(row.getAs[Double](1), row.getAs[Double](2), row.getAs[Double](3))
+        Vectors.dense(
+          row.getAs[Double](1),
+          row.getAs[Double](2),
+          row.getAs[Double](3),
+          row.getAs[Double](4),
+          row.getAs[Double](5))
       )).cache()
 
-
     // Split data into training (60%) and test (40%)
-    val Array(training, test) = labeledData.randomSplit(Array(0.7, 0.3), seed = 11L)
+    val Array(training, test) = labeledData.randomSplit(Array(0.6, 0.4), seed = 11L)
     training.cache()
 
     val numClasses = 2
-    val numTrees = 10 // Use more in practice.
+    val numTrees = 256 // Use more in practice.
     val featureSubsetStrategy = "auto" // Let the algorithm choose.
     val impurity = "gini"
     val maxDepth = 4
@@ -346,7 +364,15 @@ class MetricTester extends FunSuite {
 
     val rdd = spark.sparkContext.makeRDD(Seq(metric))
 
-    EsSpark.saveToEs(rdd, "linkage_metrics/docs")
+    EsSpark.saveToEs(rdd, "model_metrics/docs")
+
+
+    //val stream = this.getClass.getResource("model.myRandomForestClassificationModel100").toString
+
+
+    // Save and load model
+    model.save(sc, "/Users/johnpoulin/tmp/myRandomForestClassificationModel102")
+    //val linkageModel = RandomForestModel.load(sc, "/Users/johnpoulin/tmp/myRandomForestClassificationModel")
   }
 }
 

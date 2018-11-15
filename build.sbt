@@ -1,3 +1,5 @@
+
+
 name := "Auditor"
 
 version := "0.1"
@@ -6,6 +8,12 @@ scalaVersion := "2.11.8"
 
 //val sparkVer = "2.2.1"
 val sparkVer = "2.3.2"
+
+resolvers ++= Seq(
+  Resolver.sonatypeRepo("public"),
+  "Confluent Maven Repo" at "http://packages.confluent.io/maven/"
+)
+
 
 // https://mvnrepository.com/artifact/org.apache.spark/spark-core
 libraryDependencies ++= Seq(
@@ -29,3 +37,14 @@ libraryDependencies += "org.apache.kudu" % "kudu-client" % "1.7.1"
 libraryDependencies += "org.apache.kudu" %% "kudu-spark2" % "1.7.1"
 
 
+/* without this explicit merge strategy code you get a lot of noise from sbt-assembly
+   complaining about not being able to dedup files */
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", xs@_*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}
+
+/* including scala bloats your assembly jar unnecessarily, and may interfere with
+   spark runtime */
+assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
+assemblyJarName in assembly := "sparkETL.jar"

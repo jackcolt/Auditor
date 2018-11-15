@@ -4,7 +4,7 @@ import org.joda.time.DateTime
 
 import scala.beans.BeanProperty
 
-class LinkageMetric (_name:String) extends Serializable {
+class LinkageMetric (_name:String, _version: String) extends Serializable {
 
   @BeanProperty var characteristics: List[LinkageCharacteristic] = List()
 
@@ -25,6 +25,8 @@ class LinkageMetric (_name:String) extends Serializable {
   @BeanProperty var label: LinkageCharacteristic = _
 
   @BeanProperty var performance: Performance = _
+
+  @BeanProperty val version = _version
 
 
 }
