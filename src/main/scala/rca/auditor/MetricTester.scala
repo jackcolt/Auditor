@@ -270,7 +270,7 @@ class MetricTester extends FunSuite {
     val kuduContext = new KuduContext(kuduMaster, sc)
 
 
-    val analysisDF = sqlContext.read.options(Map("kudu.master" -> "172.31.37.251:7051", "kudu.table" -> "impala::audit.dq_cl_analysis_test_date")).kudu
+    val analysisDF = sqlContext.read.options(Map("kudu.master" -> "kudu3.dm-test.local:7051", "kudu.table" -> "impala::audit.dq_cl_analysis_test_date")).kudu
 
     analysisDF.createOrReplaceTempView("analysis")
 
@@ -282,7 +282,7 @@ class MetricTester extends FunSuite {
         "seller_lev_ratio_score, " +
         "cast (date_interval_match as DOUBLE), " +
         "cast (date_exact_match as DOUBLE)" +
-        "from analysis limit 1000000")
+        "from analysis limit 2000000")
 
     val labeledData = data.rdd.map(row =>
       new LabeledPoint (
@@ -296,11 +296,11 @@ class MetricTester extends FunSuite {
       )).cache()
 
     // Split data into training (60%) and test (40%)
-    val Array(training, test) = labeledData.randomSplit(Array(0.6, 0.4), seed = 11L)
+    val Array(training, test) = labeledData.randomSplit(Array(0.8, 0.2), seed = 15L)
     training.cache()
 
     val numClasses = 2
-    val numTrees = 256 // Use more in practice.
+    val numTrees = 100
     val featureSubsetStrategy = "auto" // Let the algorithm choose.
     val impurity = "gini"
     val maxDepth = 4
@@ -371,7 +371,7 @@ class MetricTester extends FunSuite {
 
 
     // Save and load model
-    model.save(sc, "/Users/johnpoulin/tmp/myRandomForestClassificationModel102")
+    model.save(sc, "/Users/johnpoulin/tmp/myRandomForestClassificationModel103")
     //val linkageModel = RandomForestModel.load(sc, "/Users/johnpoulin/tmp/myRandomForestClassificationModel")
   }
 }

@@ -6,8 +6,8 @@ version := "0.1"
 
 scalaVersion := "2.11.8"
 
-//val sparkVer = "2.2.1"
-val sparkVer = "2.3.2"
+val sparkVer = "2.2.1"
+//val sparkVer = "2.3.2"
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("public"),
@@ -47,4 +47,4 @@ assemblyMergeStrategy in assembly := {
 /* including scala bloats your assembly jar unnecessarily, and may interfere with
    spark runtime */
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
-assemblyJarName in assembly := "sparkETL.jar"
+assemblyJarName in assembly := "model_training.jar"
