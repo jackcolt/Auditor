@@ -32,8 +32,19 @@ object RandomForestModelBuilder {
 
       val spark = SparkSession.builder()
         //.master("local")
-        .appName("Linkage Metrics").getOrCreate()
+      .appName("Random Forest Model").getOrCreate()
+
       spark.conf.set("spark.driver.allowMultipleContexts", "true")
+
+      //spark.conf.set("es.nodes", "172.31.35.124")
+
+      //spark.conf.set("es.port", "9200")
+
+      spark.conf.set("es.index.auto.create", "true")
+
+      //spark.conf.set("es.nodes.discovery", "false")
+
+      //spark.conf.set("es.nodes.wan.only", "false")
 
       val sc = spark.sparkContext
 
@@ -57,7 +68,8 @@ object RandomForestModelBuilder {
           "seller_lev_ratio_score, " +
           "cast (date_interval_match as DOUBLE), " +
           "cast (date_exact_match as DOUBLE)" +
-          "from analysis limit 4000000")
+          //"from analysis limit 5000000")
+          "from analysis")
 
       val labeledData = data.rdd.map(row =>
         new LabeledPoint (
@@ -71,7 +83,7 @@ object RandomForestModelBuilder {
         )).cache()
 
       // Split data into training (60%) and test (40%)
-      val Array(training, test) = labeledData.randomSplit(Array(0.8, 0.2), seed = 11L)
+      val Array(training, test) = labeledData.randomSplit(Array(0.7, 0.3), seed = 11L)
       training.cache()
 
       val numClasses = 2
@@ -109,9 +121,15 @@ object RandomForestModelBuilder {
 
       // Precision by label
       val labels = metrics.labels
+
+
+      val values= StringBuilder.newBuilder
       labels.foreach { l =>
-        println(s"Precision($l) = " + metrics.precision(l))
+        val msg = s"Precision($l) = " + metrics.precision(l) + " "
+        println(msg)
+        values.append(msg)
       }
+
 
       // Recall by label
       labels.foreach { l =>
@@ -135,18 +153,29 @@ object RandomForestModelBuilder {
       println(s"Weighted false positive rate: ${metrics.weightedFalsePositiveRate}")
 
 
-      metric.performance = new Performance(metrics.accuracy, metrics.weightedPrecision,metrics.weightedRecall,metrics.weightedFMeasure,metrics.weightedFalsePositiveRate)
+      metric.performance = new Performance(
+        metrics.accuracy,
+        metrics.weightedPrecision,
+        metrics.weightedRecall,
+        metrics.weightedFMeasure,
+        metrics.weightedFalsePositiveRate,
+        values.toString(),
+        metrics.confusionMatrix.toString())
+
+
 
       val rdd = spark.sparkContext.makeRDD(Seq(metric))
 
-      EsSpark.saveToEs(rdd, "model_metrics/docs")
+
+      EsSpark.saveToEs(rdd, "metrics/docs", Map("es.nodes" -> "dm-test-es.rcanalytics.io:9200"))
+
 
 
       //val stream = this.getClass.getResource("model.myRandomForestClassificationModel100").toString
 
 
       // Save and load model
-      model.save(sc, "/var/efsVolume/models/myRandomForestClassificationModel102")
+      model.save(sc, "/var/efsVolume/models/myRandomForestClassificationModel105")
       //val linkageModel = RandomForestModel.load(sc, "/Users/johnpoulin/tmp/myRandomForestClassificationModel")
     }
 
