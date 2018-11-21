@@ -236,7 +236,7 @@ class MetricTester extends FunSuite {
       metrics.weightedRecall,
       metrics.weightedFMeasure,
       metrics.weightedFalsePositiveRate,
-      "", "")
+      "", "","")
 
     val rdd = spark.sparkContext.makeRDD(Seq(metric))
 
@@ -387,7 +387,7 @@ class MetricTester extends FunSuite {
         metrics.weightedRecall,
         metrics.weightedFMeasure,
         metrics.weightedFalsePositiveRate,
-        values.toString(),"")
+        values.toString(),"","")
 
 
       val rdd = spark.sparkContext.makeRDD(Seq(metric))

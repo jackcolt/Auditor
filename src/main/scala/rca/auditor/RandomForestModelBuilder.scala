@@ -7,13 +7,14 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.RandomForest
 import org.apache.spark.sql.SparkSession
 import org.elasticsearch.spark.rdd.EsSpark
+import org.joda.time.DateTime
 
 
 object RandomForestModelBuilder {
 
   def main(args: Array[String]): Unit = {
     try {
-      var metric = new LinkageMetric("CL Deed to DQ Deed Linkage", "1")
+      var metric = new LinkageMetric("CL Deed to DQ Deed Linkage Model", "1")
 
       println ("metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone)
 
@@ -62,18 +63,20 @@ object RandomForestModelBuilder {
 
 
       val data = spark.sql(
-        "SELECT floor(1.0 - apn_lev_ratio_score) as label, "+
+
+        //"SELECT floor(1.0 - apn_lev_ratio_score) as label, "+
+          "select (1.0 - apn_lev_ratio_score), "+
           "addr_lev_ratio_score, "+
           "buyer_lev_ratio_score, "+
           "seller_lev_ratio_score, " +
           "cast (date_interval_match as DOUBLE), " +
-          "cast (date_exact_match as DOUBLE)" +
-          //"from analysis limit 5000000")
-          "from analysis")
+          "cast (date_exact_match as DOUBLE) " +
+          "from analysis " +
+            "where apn_lev_ratio_score=1 or apn_lev_ratio_score=0")
 
       val labeledData = data.rdd.map(row =>
         new LabeledPoint (
-          row.getAs[Long](0),
+          row.getAs[Double](0),
           Vectors.dense(
             row.getAs[Double](1),
             row.getAs[Double](2),
@@ -83,7 +86,7 @@ object RandomForestModelBuilder {
         )).cache()
 
       // Split data into training (60%) and test (40%)
-      val Array(training, test) = labeledData.randomSplit(Array(0.7, 0.3), seed = 11L)
+      val Array(training, test) = labeledData.randomSplit(Array(0.6, 0.4), seed = 11L)
       training.cache()
 
       val numClasses = 2
@@ -153,6 +156,8 @@ object RandomForestModelBuilder {
       println(s"Weighted false positive rate: ${metrics.weightedFalsePositiveRate}")
 
 
+      val modelLocation = "/var/efsVolume/models/rf_"+DateTime.now().toString("HH_mm_ss")
+
       metric.performance = new Performance(
         metrics.accuracy,
         metrics.weightedPrecision,
@@ -160,7 +165,8 @@ object RandomForestModelBuilder {
         metrics.weightedFMeasure,
         metrics.weightedFalsePositiveRate,
         values.toString(),
-        metrics.confusionMatrix.toString())
+        metrics.confusionMatrix.toString(),
+        modelLocation)
 
 
 
@@ -170,13 +176,10 @@ object RandomForestModelBuilder {
       EsSpark.saveToEs(rdd, "metrics/docs", Map("es.nodes" -> "dm-test-es.rcanalytics.io:9200"))
 
 
-
-      //val stream = this.getClass.getResource("model.myRandomForestClassificationModel100").toString
-
-
       // Save and load model
-      model.save(sc, "/var/efsVolume/models/myRandomForestClassificationModel105")
+      model.save(sc, modelLocation)
       //val linkageModel = RandomForestModel.load(sc, "/Users/johnpoulin/tmp/myRandomForestClassificationModel")
+
     }
 
     catch {

@@ -9,7 +9,8 @@ class Performance (
                     _f1: Double,
                     _falsePositiveRate: Double,
                     _labelPerformance: String,
-                    _confusionMatrix: String) extends Serializable {
+                    _confusionMatrix: String,
+                    modelLocation:String) extends Serializable {
 
   @BeanProperty val accuracy:Double=_accuracy
 
@@ -24,5 +25,7 @@ class Performance (
   @BeanProperty val labelPerformance:String = _labelPerformance
 
   @BeanProperty val confusionMatrix:String = _confusionMatrix
+
+  @BeanProperty val ModelLocation:String = modelLocation
 
 }
