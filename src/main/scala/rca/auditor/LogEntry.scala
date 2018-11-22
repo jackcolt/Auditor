@@ -18,4 +18,6 @@ class LogEntry (
 
   @BeanProperty val Message: String = message
 
+  @BeanProperty val Metric: LinkageMetric = linkageMetric
+
 }

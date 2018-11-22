@@ -12,11 +12,12 @@ import org.joda.time.DateTime
 
 object RandomForestModelBuilder {
 
+
+  val esNodes = "dm-test-es.rcanalytics.io:9200"
+
   def main(args: Array[String]): Unit = {
     try {
       var metric = new LinkageMetric("CL Deed to DQ Deed Linkage Model", "1")
-
-      val esNodes = "dm-test-es.rcanalytics.io:9200"
 
       val label = new LinkageCharacteristic("apn_lev_ratio_score",0)
 
@@ -49,7 +50,7 @@ object RandomForestModelBuilder {
 
       val sc = spark.sparkContext
 
-      logMessage(metric,"metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone, esNodes, spark)
+      logMessage(metric,"metrics calculated on: "+metric.timeStamp+ " in time zone: "+metric.timeZone, spark)
 
       val sqlContext = spark.sqlContext
 
@@ -108,8 +109,8 @@ object RandomForestModelBuilder {
       }
       val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / test.count()
 
-      logMessage(metric,s"Test Error = $testErr", esNodes, spark)
-      logMessage(metric,s"Learned classification forest model:\n ${model.toDebugString}", esNodes, spark)
+      logMessage(metric,s"Test Error = $testErr", spark)
+      logMessage(metric,s"Learned classification forest model:\n ${model.toDebugString}", spark)
 
 
 
@@ -118,13 +119,13 @@ object RandomForestModelBuilder {
 
       // Confusion matrix
 
-      logMessage(metric,"Confusion matrix:", esNodes, spark)
-      logMessage(metric,metrics.confusionMatrix.toString(), esNodes, spark)
+      logMessage(metric,"Confusion matrix:", spark)
+      logMessage(metric,metrics.confusionMatrix.toString(), spark)
 
       // Overall Statistics
       val accuracy = metrics.accuracy
 
-      logMessage(metric,s"Accuracy = $accuracy", esNodes, spark)
+      logMessage(metric,s"Accuracy = $accuracy", spark)
 
       // Precision by label
       val labels = metrics.labels
@@ -132,7 +133,7 @@ object RandomForestModelBuilder {
       val values= StringBuilder.newBuilder
       labels.foreach { l =>
         val msg = s"Precision($l) = " + metrics.precision(l) + " "
-        logMessage(metric,msg, esNodes, spark)
+        logMessage(metric,msg, spark)
 
         values.append(msg)
       }
@@ -140,30 +141,30 @@ object RandomForestModelBuilder {
 
       // Recall by label
       labels.foreach { l =>
-        logMessage(metric,s"Recall($l) = " + metrics.recall(l), esNodes, spark)
+        logMessage(metric,s"Recall($l) = " + metrics.recall(l), spark)
       }
 
       // False positive rate by label
       labels.foreach { l =>
-        logMessage(metric,s"FPR($l) = " + metrics.falsePositiveRate(l), esNodes, spark)
+        logMessage(metric,s"FPR($l) = " + metrics.falsePositiveRate(l), spark)
       }
 
       // F-measure by label
       labels.foreach { l =>
-        logMessage(metric,s"F1-Score($l) = " + metrics.fMeasure(l), esNodes, spark)
+        logMessage(metric,s"F1-Score($l) = " + metrics.fMeasure(l), spark)
       }
 
       // Weighted stats
 
-      logMessage(metric,s"Weighted precision: ${metrics.weightedPrecision}", esNodes, spark)
-      logMessage(metric,s"Weighted recall: ${metrics.weightedRecall}", esNodes, spark)
-      logMessage(metric,s"Weighted F1 score: ${metrics.weightedFMeasure}", esNodes, spark)
-      logMessage(metric,s"Weighted false positive rate: ${metrics.weightedFalsePositiveRate}", esNodes, spark)
+      logMessage(metric,s"Weighted precision: ${metrics.weightedPrecision}", spark)
+      logMessage(metric,s"Weighted recall: ${metrics.weightedRecall}", spark)
+      logMessage(metric,s"Weighted F1 score: ${metrics.weightedFMeasure}", spark)
+      logMessage(metric,s"Weighted false positive rate: ${metrics.weightedFalsePositiveRate}", spark)
 
 
       val modelLocation = "/var/efsVolume/models/rf_"+DateTime.now().toString("HH_mm_ss")
 
-      logMessage(metric,s"storing model to: ${modelLocation}", esNodes, spark)
+      logMessage(metric,s"storing model to: ${modelLocation}", spark)
 
       metric.performance = new Performance(
         metrics.accuracy,
@@ -196,10 +197,10 @@ object RandomForestModelBuilder {
     }
   }
 
-  def logMessage(metric: LinkageMetric, message:String, nodes:String, sparkSession: SparkSession): Unit = {
+  def logMessage( metric: LinkageMetric, message:String, sparkSession: SparkSession): Unit = {
     val logEntry = new LogEntry(metric, message)
     val rdd = sparkSession.sparkContext.makeRDD(Seq(logEntry))
-    EsSpark.saveToEs(rdd, "metrics_log/docs",Map("es.nodes" -> s"$nodes") )
+    EsSpark.saveToEs(rdd, "metrics_log/docs",Map("es.nodes" -> s"$esNodes") )
   }
 
 }
