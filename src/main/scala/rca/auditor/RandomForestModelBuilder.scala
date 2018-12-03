@@ -30,6 +30,9 @@ object RandomForestModelBuilder {
 
       metric.label = label
 
+      metric.source = new LinkageSource("DQ");
+      metric.target = new LinkageSource("CL");
+
       metric.methodology = "RandomForest"
 
       val spark = SparkSession.builder()
@@ -37,6 +40,8 @@ object RandomForestModelBuilder {
       .appName("Random Forest Model").getOrCreate()
 
       spark.conf.set("spark.driver.allowMultipleContexts", "true")
+
+      //refactor to take a spark context as a parameter from a driver class.
 
       //spark.conf.set("es.nodes", "172.31.35.124")
 
@@ -86,6 +91,12 @@ object RandomForestModelBuilder {
             row.getAs[Double](4),
             row.getAs[Double](5))
         )).cache()
+
+      //use case classes for serialization instead of BeanProperty
+      //define a case class for the sql query and use type safe item name for the vectors. (data set)
+      //convert null charactertistics to "1"
+      //convert to new table structure that is more generic
+      //leverage linkage characteristics defined in model meta-data use string interpolation
 
       // Split data into training (60%) and test (40%)
       val Array(training, test) = labeledData.randomSplit(Array(0.6, 0.4), seed = 11L)
@@ -179,8 +190,9 @@ object RandomForestModelBuilder {
 
       val rdd = spark.sparkContext.makeRDD(Seq(metric))
 
+      //this is a hack since I could not get this to work in setting the spark context.
 
-      EsSpark.saveToEs(rdd, "metrics/docs", Map("es.nodes" -> "dm-test-es.rcanalytics.io:9200"))
+      EsSpark.saveToEs(rdd, "linkage_models/docs", Map("es.nodes" -> "dm-test-es.rcanalytics.io:9200"))
 
 
       // Save and load model
